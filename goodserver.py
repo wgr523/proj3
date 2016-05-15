@@ -14,6 +14,8 @@ import urllib.parse
 import copy
 import argparse
 import re
+import json
+import signal
 
 import garage
 
@@ -65,8 +67,12 @@ class GeruiHTTPRequestHandler(BaseHTTPRequestHandler):
             ret = garage.get(the_key)
             return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":"'+ret[1]+'"}')
         if self.path == '/kvman/shutdown':
-            sys.exit(0)
-        if self.path == '/index':
+            os.kill(os.getpid(),signal.SIGKILL)
+        if self.path == '/kvman/countkey':
+            return self.str2file('{"result":"'+str(garage.countkey())+'"}')
+        if self.path == '/kvman/dump':
+            return self.str2file(json.dumps(garage.dump()))
+        if self.path == '/':
             return self.str2file('<h1>Test</h1>')
         return self.str2file('{"success":"false"}')
 

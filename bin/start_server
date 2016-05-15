@@ -1,0 +1,4 @@
+cd ..
+if [ $1 == "-p" ]; then
+	python3 simple_server.py &
+fi

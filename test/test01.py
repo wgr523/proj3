@@ -21,7 +21,7 @@ class TestStringMethods(unittest.TestCase):
     path_get='/kv/get?key='
 
     def setUp(self):
-        with open('conf/settings.conf') as f:
+        with open('../conf/settings.conf') as f:
             d = json.load(f)
             self.url = 'http://'+d['primary']+':'+d['port']
 
@@ -63,7 +63,7 @@ class TestStringMethods(unittest.TestCase):
         self.assertEqual(parse_output(r,'success'),'false')
         return parse_output(r,'value')
     
-    def one(self):
+    def testone(self):
         self.do_insert({'key': 'sha', 'value': 'dashabi'})
 
         self.do_update({'key': 'sha', 'value': 'cao'})
@@ -93,7 +93,7 @@ class TestStringMethods(unittest.TestCase):
             #payload={'key':str(os.getpid())}
             #requests.post(self.url+self.path_delete, data=payload)
 
-    def testtoomany(self):
+    def toomany(self):
         ''' may be too many things will cause bug...'''
         mainpid = os.getpid()
         #self.do_insert({'key': 'oldman', 'value': 'twooo'})

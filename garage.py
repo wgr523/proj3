@@ -24,4 +24,7 @@ def get(key):
         return (True,ret)
     else:
         return (False,'error')
-
+def countkey():
+    return len(main_mem)
+def dump():
+    return main_mem
