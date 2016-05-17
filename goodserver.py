@@ -14,8 +14,10 @@ import urllib.parse
 import copy
 import argparse
 import re
-import json
 import signal
+import json
+
+import requests
 
 import garage
 
@@ -23,7 +25,7 @@ from http import HTTPStatus
 
 from http.server import BaseHTTPRequestHandler
 
-class GeruiHTTPRequestHandler(BaseHTTPRequestHandler):
+class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
 
     """Simple HTTP request handler with GET and HEAD commands.
 
@@ -36,8 +38,10 @@ class GeruiHTTPRequestHandler(BaseHTTPRequestHandler):
 
     """
 
-    server_version = "GeruiHTTP/0.0.1" 
+    server_version = "GeruiHTTP/0.0.1"
 
+    backup_url = None
+    
     def do_GET(self):
         """Serve a GET request."""
         f = self.simple_get()
@@ -60,20 +64,37 @@ class GeruiHTTPRequestHandler(BaseHTTPRequestHandler):
             f.close()
             
     def simple_get(self):
-        pattern = re.compile('/kv/get\?key=(?P<the_key>\S*)')
+        if self.path == '/back':
+            if not self.backup_url:
+                f = open('conf/settings.conf')
+                d = json.load(f)
+                self.backup_url='http://'+d['backup']+':'+d['port']
+            backup_online = True
+            try:
+                requests.get(self.backup_url)
+            except:
+                backup_online = False
+            if backup_online:
+                payload={"key":"shi","value":"zhe"}
+                requests.post(self.backup_url,data=payload)
+                return self.str2file('Backup online')
+            else:
+                return self.str2file('Backup offline')
+        if self.path == '/kvman/shutdown':
+            os.remove('conf/primary.pid')
+            os.kill(os.getpid(),signal.SIGKILL)
+        if self.path == '/kvman/countkey':
+            return self.str2file('{"result":"'+str(garage.countkey())+'"}')
+        if self.path == '/kvman/dump':
+            return self.dict2file(garage.dump())
+        if self.path == '/':
+            return self.str2file('<h1>Test</h1>')
+        pattern = re.compile('/kv/get\?key=(?P<the_key>.+)')
         m = pattern.match(self.path)
         if m:
             the_key = m.group('the_key')
             ret = garage.get(the_key)
             return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":"'+ret[1]+'"}')
-        if self.path == '/kvman/shutdown':
-            os.kill(os.getpid(),signal.SIGKILL)
-        if self.path == '/kvman/countkey':
-            return self.str2file('{"result":"'+str(garage.countkey())+'"}')
-        if self.path == '/kvman/dump':
-            return self.str2file(json.dumps(garage.dump()))
-        if self.path == '/':
-            return self.str2file('<h1>Test</h1>')
         return self.str2file('{"success":"false"}')
 
     def simple_post(self):
@@ -149,8 +170,6 @@ class GeruiHTTPRequestHandler(BaseHTTPRequestHandler):
                     break
             else:
                 return self.list_directory(path)
-        if 'tmd' in self.path:
-            return self.str2file('TMD')
         ctype = self.guess_type(path)
         try:
             f = open(path, 'rb')
@@ -298,12 +317,14 @@ class GeruiHTTPRequestHandler(BaseHTTPRequestHandler):
         else:
             return self.extensions_map['']
 
-    def test_word(self,word):
+    def dict2file(self,d):
+        ''' d is dictionary'''
         r = []
         enc = sys.getfilesystemencoding()
-        r.append('This is test for show a single word.<br>')
-        r.append(word)
-        encoded = '\n'.join(r).encode(enc, 'surrogateescape')
+        for key in d:
+            r.append('["'+key+'","'+d[key]+'"]')
+        the_string = '['+', '.join(r)+']'
+        encoded = the_string.encode(enc, 'surrogateescape')
         f = io.BytesIO()
         f.write(encoded)
         f.seek(0)
