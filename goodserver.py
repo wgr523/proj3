@@ -16,6 +16,7 @@ import argparse
 import re
 import signal
 import json
+import xmlrpc.client
 
 import requests
 
@@ -38,7 +39,7 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
 
     """
 
-    server_version = "GeruiHTTP/0.0.1"
+    server_version = "GeruiHTTP/0.0.2"
 
     backup_url = None
     
@@ -62,21 +63,23 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
             self.copyfile(f, self.wfile)
         finally:
             f.close()
-            
+
+    def connect_backup(self):
+        if not self.backup_url:
+            f = open('conf/settings.conf')
+            d = json.load(f)
+            self.backup_url='http://'+d['backup']+':'+d['port']
+        try:
+            proxy = xmlrpc.client.ServerProxy(self.backup_url)
+            proxy.test()
+            return proxy
+        except:
+            return None
+
     def simple_get(self):
         if self.path == '/back':
-            if not self.backup_url:
-                f = open('conf/settings.conf')
-                d = json.load(f)
-                self.backup_url='http://'+d['backup']+':'+d['port']
-            backup_online = True
-            try:
-                requests.get(self.backup_url)
-            except:
-                backup_online = False
-            if backup_online:
-                payload={"key":"shi","value":"zhe"}
-                requests.post(self.backup_url,data=payload)
+            backup_rpc = self.connect_backup()
+            if backup_rpc:
                 return self.str2file('Backup online')
             else:
                 return self.str2file('Backup offline')
@@ -120,19 +123,29 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
         #print(the_key,the_value)
         if self.path == '/kv/insert':
             if the_key and the_value:
+                proxy = self.connect_backup()
+                if proxy:
+                    proxy.insert(the_key,the_value)
                 ret = garage.insert(the_key,the_value)
                 return self.str2file('{"success":"'+str(ret).lower()+'"}')
         elif self.path == '/kv/delete':
             if the_key:
+                proxy = self.connect_backup()
+                if proxy:
+                    proxy.delete(the_key)
                 ret = garage.delete(the_key)
                 return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":"'+ret[1]+'"}')
         elif self.path == '/kv/update':
             if the_key and the_value:
+                proxy = self.connect_backup()
+                if proxy:
+                    proxy.update(the_key,the_value)
                 ret = garage.update(the_key,the_value)
                 return self.str2file('{"success":"'+str(ret).lower()+'"}')
         #print()
         return self.str2file('{"success":"false"}')
 
+    # This is not used in my code, --- wgr
     def send_head(self):
         """Common code for GET and HEAD commands.
 
@@ -188,6 +201,7 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
             f.close()
             raise
 
+    # This is not used in my code, --- wgr
     def list_directory(self, path):
         """Helper to produce a directory listing (absent index.html).
 
