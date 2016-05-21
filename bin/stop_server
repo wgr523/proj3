@@ -1,2 +1,9 @@
-cd ..
-python3 kill_server.py &
+if [ $1 == "-p" ]
+then
+	python3 kill_primary.py
+elif [ $1 == "-b" ]
+then
+	python3 kill_backup.py
+fi
+
+

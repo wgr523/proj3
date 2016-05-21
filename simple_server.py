@@ -4,28 +4,36 @@ import os
 from http.server import HTTPServer
 from goodserver import PrimaryHTTPRequestHandler
 import xmlrpc.client
+import socket 
 import garage
 
 def connect_backup():
     f = open('conf/settings.conf')
     d = json.load(f)
-    backup_url='http://'+d['backup']+':'+d['port']
     try:
-        proxy = xmlrpc.client.ServerProxy(backup_url)
-        proxy.test()
-        return proxy
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(0.1)
+        s.connect((d['backup'], int(d['port'])))
+        s.close()
     except:
         return None
+    backup_url='http://'+d['backup']+':'+d['port']
+    proxy = xmlrpc.client.ServerProxy(backup_url)
+    return proxy
 
-def run(handler_class, address ='127.0.0.1', portnumber = 8001):
+def run(handler_class, address , portnumber ):
     server_class=HTTPServer
     server_address = (address,portnumber)
     httpd = server_class(server_address,handler_class)
     proxy = connect_backup()
     if proxy:
-        print('backup connected, copying')
-        garage.main_mem = proxy.dump()
-        print('copied')
+        print('backup connected')
+        t = proxy.get_time_stamp()
+        if t:
+            print('copying')
+            garage.main_mem = proxy.dump()
+            garage.time_stamp[0] = t
+            print('copied')
     else:
         print('backup offline')
     try:

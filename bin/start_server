@@ -1,4 +1,7 @@
-cd ..
-if [ $1 == "-p" ]; then
-	python3 simple_server.py &
+if [ $1 == "-p" ]
+then
+	nohup python3 simple_server.py &
+elif [ $1 == "-b" ]
+then
+	nohup python3 rpc_server.py &
 fi

@@ -39,9 +39,10 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
 
     """
 
-    server_version = "GeruiHTTP/0.0.2"
+    server_version = "GeruiHTTP/0.0.3"
 
-    backup_url = None
+    backup_address = None # string
+    backup_port = None # string
     
     def do_GET(self):
         """Serve a GET request."""
@@ -65,16 +66,21 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
             f.close()
 
     def connect_backup(self):
-        if not self.backup_url:
+        if not self.backup_address or not self.backup_port:
             f = open('conf/settings.conf')
             d = json.load(f)
-            self.backup_url='http://'+d['backup']+':'+d['port']
+            self.backup_address = d['backup']
+            self.backup_port = d['port']
         try:
-            proxy = xmlrpc.client.ServerProxy(self.backup_url)
-            proxy.test()
-            return proxy
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(0.1)
+            s.connect((self.backup_address, int(self.backup_port)))
+            s.close()
         except:
             return None
+        url = 'http://'+self.backup_address+':'+self.backup_port
+        proxy = xmlrpc.client.ServerProxy(url)
+        return proxy
 
     def simple_get(self):
         if self.path == '/back':
@@ -83,13 +89,25 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                 return self.str2file('Backup online')
             else:
                 return self.str2file('Backup offline')
+        if self.path == '/backup/copy': # this should be deleted
+            tries = 20
+            while tries:
+                time.sleep(0.01)
+                tries=tries-1
+                backup_rpc = self.connect_backup()
+                if backup_rpc:
+                    backup_rpc.set_main_mem(garage.main_mem)
+                    backup_rpc.set_time_stamp(garage.time_stamp[0])
+
         if self.path == '/kvman/shutdown':
             os.remove('conf/primary.pid')
-            os.kill(os.getpid(),signal.SIGKILL)
+            os.kill(os.getpid(),signal.SIGINT)
         if self.path == '/kvman/countkey':
-            return self.str2file('{"result":"'+str(garage.countkey())+'"}')
+            return self.str2file('{"result": "'+str(garage.countkey())+'"}')
         if self.path == '/kvman/dump':
             return self.dict2file(garage.dump())
+        if self.path == '/kvman/gooddump':
+            return self.str2file('{"main_mem": '+json.dumps(garage.main_mem)+', "time_stamp": "'+str(garage.time_stamp[0])+'"}')
         if self.path == '/':
             return self.str2file('<h1>Test</h1>')
         pattern = re.compile('/kv/get\?key=(?P<the_key>.+)')
@@ -123,26 +141,47 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
         #print(the_key,the_value)
         if self.path == '/kv/insert':
             if the_key and the_value:
-                proxy = self.connect_backup()
-                if proxy:
-                    proxy.insert(the_key,the_value)
+                myold_t = garage.time_stamp[0]
                 ret = garage.insert(the_key,the_value)
+                if ret:
+                    proxy = self.connect_backup()
+                    if proxy: # the following time_diff claues may be useless, but is correct. if time complexity is bad, remove them
+                        time_diff = myold_t - proxy.get_time_stamp()
+                        if time_diff > 0:
+                            proxy.set_main_mem(garage.main_mem)
+                            proxy.set_time_stamp(garage.time_stamp[0])
+                        else:
+                            proxy.insert(the_key,the_value)
+                            if time_diff < 0:
+                                garage.main_mem = proxy.dump()
+                                garage.time_stamp[0] = proxy.get_time_stamp()
+                            else:
+                                proxy.set_time_stamp(garage.time_stamp[0])
                 return self.str2file('{"success":"'+str(ret).lower()+'"}')
         elif self.path == '/kv/delete':
             if the_key:
+                old_t = garage.time_stamp[0]
+                ret = garage.delete(the_key)
                 proxy = self.connect_backup()
                 if proxy:
-                    proxy.delete(the_key)
-                ret = garage.delete(the_key)
+                    if proxy.get_time_stamp() < old_t:
+                        proxy.set_main_mem(garage.main_mem)
+                    else:
+                        proxy.delete(the_key)
+                    proxy.set_time_stamp(garage.time_stamp[0])
                 return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":"'+ret[1]+'"}')
         elif self.path == '/kv/update':
             if the_key and the_value:
+                old_t = garage.time_stamp[0]
+                ret = garage.update(the_key,the_value)
                 proxy = self.connect_backup()
                 if proxy:
-                    proxy.update(the_key,the_value)
-                ret = garage.update(the_key,the_value)
+                    if proxy.get_time_stamp() < old_t:
+                        proxy.set_main_mem(garage.main_mem)
+                    else:
+                        proxy.update(the_key,the_value)
+                    proxy.set_time_stamp(garage.time_stamp[0])
                 return self.str2file('{"success":"'+str(ret).lower()+'"}')
-        #print()
         return self.str2file('{"success":"false"}')
 
     # This is not used in my code, --- wgr

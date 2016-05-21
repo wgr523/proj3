@@ -13,7 +13,7 @@ def parse_output(r,k):
     else:
         return None
 
-class TestStringMethods(unittest.TestCase):
+class TestMethods(unittest.TestCase):
     url = ''
     path_insert='/kv/insert'
     path_update='/kv/update'
@@ -26,10 +26,10 @@ class TestStringMethods(unittest.TestCase):
             self.url = 'http://'+d['primary']+':'+d['port']
 
     def testone(self):
-        payload = {'key': 'sha', 'value' :'nima'}
-        r = requests.post(self.url+self.path_update, data=payload)
+        payload = {'key': 'rinima', 'value' :'2222'}
+        r = requests.post(self.url+self.path_insert, data=payload)
         print(r.text)
-        payload = {'key': '4', 'value' :'four'}
+        payload = {'key': 'dalailama', 'value' :'23333'}
         r = requests.post(self.url+self.path_insert, data=payload)
         print(r.text)
 
