@@ -17,7 +17,7 @@ import re
 import signal
 import json
 import xmlrpc.client
-
+from urllib.parse import unquote_plus
 import requests
 
 import garage
@@ -89,15 +89,6 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                 return self.str2file('Backup online')
             else:
                 return self.str2file('Backup offline')
-        if self.path == '/backup/copy': # this should be deleted
-            tries = 20
-            while tries:
-                time.sleep(0.01)
-                tries=tries-1
-                backup_rpc = self.connect_backup()
-                if backup_rpc:
-                    backup_rpc.set_main_mem(garage.main_mem)
-                    backup_rpc.set_time_stamp(garage.time_stamp[0])
 
         if self.path == '/kvman/shutdown':
             os.remove('conf/primary.pid')
@@ -114,6 +105,7 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
         m = pattern.match(self.path)
         if m:
             the_key = m.group('the_key')
+            the_key = unquote_plus(the_key)
             ret = garage.get(the_key)
             return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":"'+ret[1]+'"}')
         return self.str2file('{"success":"false"}')
@@ -138,7 +130,9 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
             elif tmpinput[0]=='value':
                 the_value=tmpinput[1]
         #print(str(data))
-        #print(the_key,the_value)
+        the_key = unquote_plus(the_key)
+        the_value = unquote_plus(the_value)
+        print('the key and value are',the_key,the_value)
         if self.path == '/kv/insert':
             if the_key and the_value:
                 myold_t = garage.time_stamp[0]
