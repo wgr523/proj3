@@ -2,3 +2,4 @@
 *.pyo
 *.pyc
 nohup.out
+*.log

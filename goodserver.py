@@ -184,151 +184,6 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                 return self.str2file('{"success":"'+str(ret).lower()+'"}')
         return self.str2file('{"success":"false"}')
 
-    # This is not used in my code, --- wgr
-    def send_head(self):
-        """Common code for GET and HEAD commands.
-
-        This sends the response code and MIME headers.
-
-        Return value is either a file object (which has to be copied
-        to the outputfile by the caller unless the command was HEAD,
-        and must be closed by the caller under all circumstances), or
-        None, in which case the caller has nothing further to do.
-
-        """
-        path = self.translate_path(self.path)
-##        print('path=',path)
-##        print('selfpath=',self.path)
-        f = None
-        if self.path == '/kv/get?key=k':
-            #print(self.rfile.read())
-            print(self.command)
-            return self.str2file(self.path.split('key=')[1])
-        if os.path.isdir(path):
-            parts = urllib.parse.urlsplit(self.path)
-            if not parts.path.endswith('/'):
-                # redirect browser - doing basically what apache does
-                self.send_response(HTTPStatus.MOVED_PERMANENTLY)
-                new_parts = (parts[0], parts[1], parts[2] + '/',
-                             parts[3], parts[4])
-                new_url = urllib.parse.urlunsplit(new_parts)
-                self.send_header("Location", new_url)
-                self.end_headers()
-                return None
-            for index in "index.html", "index.htm", "shabi.html":
-                index = os.path.join(path, index)
-                if os.path.exists(index):
-                    path = index
-                    break
-            else:
-                return self.list_directory(path)
-        ctype = self.guess_type(path)
-        try:
-            f = open(path, 'rb')
-        except OSError:
-            self.send_error(HTTPStatus.NOT_FOUND, "File not found")
-            return None
-        try:
-            self.send_response(HTTPStatus.OK)
-            self.send_header("Content-type", ctype)
-            fs = os.fstat(f.fileno())
-            self.send_header("Content-Length", str(fs[6]))
-            self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
-            self.end_headers()
-            return f
-        except:
-            f.close()
-            raise
-
-    # This is not used in my code, --- wgr
-    def list_directory(self, path):
-        """Helper to produce a directory listing (absent index.html).
-
-        Return value is either a file object, or None (indicating an
-        error).  In either case, the headers are sent, making the
-        interface the same as for send_head().
-
-        """
-        try:
-            list = os.listdir(path)
-        except OSError:
-            self.send_error(
-                HTTPStatus.NOT_FOUND,
-                "No permission to list directory")
-            return None
-        list.sort(key=lambda a: a.lower())
-        r = []
-        try:
-            displaypath = urllib.parse.unquote(self.path,
-                                               errors='surrogatepass')
-        except UnicodeDecodeError:
-            displaypath = urllib.parse.unquote(path)
-        displaypath = html.escape(displaypath)
-        enc = sys.getfilesystemencoding()
-        title = 'Directory listing for %s' % displaypath
-        r.append('<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" '
-                 '"http://www.w3.org/TR/html4/strict.dtd">')
-        r.append('<html>\n<head>')
-        r.append('<meta http-equiv="Content-Type" '
-                 'content="text/html; charset=%s">' % enc)
-        r.append('<title>%s</title>\n</head>' % title)
-        r.append('<body>\n<h1>%s</h1>' % title)
-        r.append('<hr>\n<ul>')
-        for name in list:
-            fullname = os.path.join(path, name)
-            displayname = linkname = name
-            # Append / for directories or @ for symbolic links
-            if os.path.isdir(fullname):
-                displayname = name + "/"
-                linkname = name + "/"
-            if os.path.islink(fullname):
-                displayname = name + "@"
-                # Note: a link to a directory displays with @ and links with /
-            r.append('<li><a href="%s">%s</a></li>'
-                    % (urllib.parse.quote(linkname,
-                                          errors='surrogatepass'),
-                       html.escape(displayname)))
-        r.append('</ul>\n<hr>\n</body>\n</html>\n')
-        encoded = '\n'.join(r).encode(enc, 'surrogateescape')
-        f = io.BytesIO()
-        f.write(encoded)
-        f.seek(0)
-        self.send_response(HTTPStatus.OK)
-        self.send_header("Content-type", "text/html; charset=%s" % enc)
-        self.send_header("Content-Length", str(len(encoded)))
-        self.end_headers()
-        return f
-
-    # This is not used in my code, --- wgr
-    def translate_path(self, path):
-        """Translate a /-separated PATH to the local filename syntax.
-
-        Components that mean special things to the local file system
-        (e.g. drive or directory names) are ignored.  (XXX They should
-        probably be diagnosed.)
-
-        """
-        # abandon query parameters
-        path = path.split('?',1)[0]
-        path = path.split('#',1)[0]
-        # Don't forget explicit trailing slash when normalizing. Issue17324
-        trailing_slash = path.rstrip().endswith('/')
-        try:
-            path = urllib.parse.unquote(path, errors='surrogatepass')
-        except UnicodeDecodeError:
-            path = urllib.parse.unquote(path)
-        path = posixpath.normpath(path)
-        words = path.split('/')
-        words = filter(None, words)
-        path = os.getcwd()
-        for word in words:
-            drive, word = os.path.splitdrive(word)
-            head, word = os.path.split(word)
-            if word in (os.curdir, os.pardir): continue
-            path = os.path.join(path, word)
-        if trailing_slash:
-            path += '/'
-        return path
 
     def copyfile(self, source, outputfile):
         """Copy all data between two file objects.
@@ -371,7 +226,7 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
             return self.extensions_map['']
 
     def dict2file(self,d):
-        ''' d is dictionary'''
+        ''' d is dictionary, similar to str2file(). by wgr'''
         r = []
         enc = sys.getfilesystemencoding()
         for key in d:
@@ -388,6 +243,7 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
         return f
 
     def str2file(self,word):
+        ''' print string to a file by wgr'''
         enc = sys.getfilesystemencoding()        
         encoded = word.encode(enc, 'surrogateescape')
         f = io.BytesIO()

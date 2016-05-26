@@ -44,6 +44,4 @@ def start_p():
     with open('conf/settings.conf') as f:
         d = json.load(f)
         run(PrimaryHTTPRequestHandler,d['primary'],int(d['port']))
-with open('conf/primary.pid','w') as fout:
-    fout.write(str(os.getpid()))
 start_p()

@@ -1,9 +1,11 @@
 if [ $1 == "-p" ]
 then
-	python3 kill_primary.py
+	kill `cat conf/primary.pid`
+	rm conf/primary.pid
 elif [ $1 == "-b" ]
 then
-	python3 kill_backup.py
+	kill `cat conf/backup.pid`
+	rm conf/backup.pid
 fi
 
 
