@@ -1,12 +1,14 @@
 import json
 import os
 from xmlrpc.server import SimpleXMLRPCServer
+#from xmlrpc.server import SimpleXMLRPCRequestHandler
+from badserver import HTTPAndRPCRequestHandler
 import requests
 import garage
 def run(address , portnumber , primary_address):
     server_class=SimpleXMLRPCServer
     server_address = (address,portnumber)
-    server = server_class(server_address, allow_none=True)
+    server = server_class(server_address, requestHandler=HTTPAndRPCRequestHandler, allow_none=True)
     server.register_function(garage.insert,"insert")
     server.register_function(garage.update,"update")
     server.register_function(garage.delete,"delete")

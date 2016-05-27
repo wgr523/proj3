@@ -1,18 +1,9 @@
-import html
-import http.client
 import io
-import mimetypes
 import os
-import posixpath
-import select
 import shutil
 import socket # For gethostbyaddr()
-import socketserver
 import sys
 import time
-import urllib.parse
-import copy
-import argparse
 import re
 import signal
 import json
@@ -20,15 +11,15 @@ import xmlrpc.client
 from urllib.parse import unquote_plus
 import requests
 
-import garage
-
 from http import HTTPStatus
 
 from http.server import BaseHTTPRequestHandler
 
+import garage
+
 class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
 
-    """Simple HTTP request handler with GET and HEAD commands.
+    """HTTP request handler with GET and HEAD and POST commands.
 
     This serves files from the current directory and any of its
     subdirectories.  The MIME type for files is determined by
@@ -91,8 +82,19 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                 return self.str2file('Backup offline')
 
         if self.path == '/kvman/shutdown':
-            os.remove('conf/primary.pid')
-            os.kill(os.getpid(),signal.SIGINT)
+            try:
+                f = open('conf/primary.pid')
+                pid = int(f.readline())
+                f.close()
+                os.remove('conf/primary.pid')
+                os.kill(pid,signal.SIGKILL)
+            except:
+                try:
+                    os.kill(os.getpid(),signal.SIGKILL)
+                except:
+                    pass
+            exit(0)
+
         if self.path == '/kvman/countkey':
             return self.str2file('{"result": "'+str(garage.countkey())+'"}')
         if self.path == '/kvman/dump':
@@ -100,7 +102,7 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
         if self.path == '/kvman/gooddump':
             return self.str2file('{"main_mem": '+json.dumps(garage.main_mem)+', "time_stamp": "'+str(garage.time_stamp[0])+'"}')
         if self.path == '/':
-            return self.str2file('<h1>Test</h1>')
+            return self.str2file('<h1>Test</h1><br>Client address: '+str(self.client_address))
         pattern = re.compile('/kv/get\?key=(?P<the_key>.+)')
         m = pattern.match(self.path)
         if m:
@@ -132,7 +134,7 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
         #print(str(data))
         the_key = unquote_plus(the_key)
         the_value = unquote_plus(the_value)
-        print('the key and value are',the_key,the_value)
+        #print('the key and value are',the_key,the_value)
         if self.path == '/kv/insert':
             if the_key and the_value:
                 myold_t = garage.time_stamp[0]
@@ -195,29 +197,6 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
         """
         shutil.copyfileobj(source, outputfile)
 
-    def guess_type(self, path):
-        """Guess the type of a file.
-
-        Argument is a PATH (a filename).
-
-        Return value is a string of the form type/subtype,
-        usable for a MIME Content-type header.
-
-        The default implementation looks the file's extension
-        up in the table self.extensions_map, using application/octet-stream
-        as a default; however it would be permissible (if
-        slow) to look inside the data to make a better guess.
-
-        """
-
-        base, ext = posixpath.splitext(path)
-        if ext in self.extensions_map:
-            return self.extensions_map[ext]
-        ext = ext.lower()
-        if ext in self.extensions_map:
-            return self.extensions_map[ext]
-        else:
-            return self.extensions_map['']
 
     def dict2file(self,d):
         ''' d is dictionary, similar to str2file(). by wgr'''
@@ -249,12 +228,3 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         return f
 
-    if not mimetypes.inited:
-        mimetypes.init() # try to read system mime.types
-    extensions_map = mimetypes.types_map.copy()
-    extensions_map.update({
-        '': 'application/octet-stream', # Default
-        '.py': 'text/plain',
-        '.c': 'text/plain',
-        '.h': 'text/plain',
-        })
