@@ -141,18 +141,35 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                 ret = garage.insert(the_key,the_value)
                 if ret:
                     proxy = self.connect_backup()
-                    if proxy: # the following time_diff claues may be useless, but is correct. if time complexity is bad, remove them
-                        time_diff = myold_t - proxy.get_time_stamp()
-                        if time_diff > 0:
-                            proxy.set_main_mem(garage.main_mem)
-                            proxy.set_time_stamp(garage.time_stamp[0])
-                        else:
-                            proxy.insert(the_key,the_value)
-                            if time_diff < 0:
-                                garage.main_mem = proxy.dump()
-                                garage.time_stamp[0] = proxy.get_time_stamp()
+                    if proxy: # below I consider what if RPC backup is wrong (not necessarily shutdown) (exception happens)
+                        yourold_t = None
+                        try:
+                            yourold_t = proxy.get_time_stamp() # what if exception happens here? yourold_t will be None
+                            time_diff = myold_t - yourold_t #proxy.get_time_stamp()
+                            if time_diff > 0:
+                                proxy.set_main_mem(garage.main_mem) # what if exception happens here? it's ok because I am newer
+                                proxy.set_time_stamp(garage.time_stamp[0]) # ditto
                             else:
-                                proxy.set_time_stamp(garage.time_stamp[0])
+                                proxy.insert(the_key,the_value)
+                                '''what if insert false? don't care, because next action will handle
+                                what if exception happens here? note that this WILL update proxy's time stamp
+                                if ptime == btime (time_diff==0): ok because below we (p and b) both delete (and set back time)
+                                if ptime < btime (time_diff<0): could this happen??? yes, under partition... see below
+                                '''
+                                if time_diff < 0:
+                                    garage.main_mem = proxy.dump() # what if exception happens here? ok because below we (p and b) both delete (and set back time)
+                                    garage.time_stamp[0] = proxy.get_time_stamp() # ditto
+                                else:
+                                    proxy.set_time_stamp(garage.time_stamp[0]) # ok because below we (p and b) both delete (and set back time)
+                        except:
+                            garage.delete(the_key)
+                            garage.time_stamp[0] = myold_t # below the point is proxy's time stamp.
+                            try:
+                                proxy.delete(the_key) # what if exception happens here? don't delete, ok. delete but don't set time, bug happens!!!!! See CAP theorem
+                                proxy.set_time_stamp(yourold_t)
+                            except:
+                                pass
+                            return self.str2file('{"success":"false"}')
                 return self.str2file('{"success":"'+str(ret).lower()+'"}')
         elif self.path == '/kv/delete':
             if the_key:

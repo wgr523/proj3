@@ -26,16 +26,19 @@ def run(handler_class, address , portnumber ):
     server_address = (address,portnumber)
     httpd = server_class(server_address,handler_class)
     proxy = connect_backup()
-    if proxy:
-        print('backup connected')
-        t = proxy.get_time_stamp()
-        if t:
-            print('copying')
-            garage.main_mem = proxy.dump()
-            garage.time_stamp[0] = t
-            print('copied')
-    else:
+    if not proxy:
         print('backup offline')
+    while proxy:
+        try:
+            t = proxy.get_time_stamp()
+            if t:
+                print('backup connected, copying')
+                garage.main_mem = proxy.dump()
+                garage.time_stamp[0] = t
+                print('copied')
+            proxy = None
+        except:
+            proxy = connect_backup()
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

@@ -26,10 +26,10 @@ class TestMethods(unittest.TestCase):
             self.url = 'http://'+d['primary']+':'+d['port']
 
     def testone(self):
-        payload = {'key': 'sha bi', 'value' :'he he'} # test space
+        payload = {'key': 'sha cha', 'value' :'he he'} # test space
         r = requests.post(self.url+self.path_insert, data=payload)
         print(r.text)
-        payload = {'key': '日本人', 'value' :'和谐'} # test Chinese
+        payload = {'key': '韩国人', 'value' :'和谐'} # test Chinese
         r = requests.post(self.url+self.path_insert, data=payload)
         print(r.text)
 
