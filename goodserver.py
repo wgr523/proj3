@@ -132,11 +132,11 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
             elif tmpinput[0]=='value':
                 the_value=tmpinput[1]
         #print(str(data))
-        the_key = unquote_plus(the_key)
-        the_value = unquote_plus(the_value)
         #print('the key and value are',the_key,the_value)
         if self.path == '/kv/insert':
             if the_key and the_value:
+                the_key = unquote_plus(the_key)
+                the_value = unquote_plus(the_value)
                 myold_t = garage.time_stamp[0]
                 ret = garage.insert(the_key,the_value)
                 if ret:
@@ -173,6 +173,7 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                 return self.str2file('{"success":"'+str(ret).lower()+'"}')
         elif self.path == '/kv/delete':
             if the_key:
+                the_key = unquote_plus(the_key)
                 old_t = garage.time_stamp[0]
                 ret = garage.delete(the_key)
                 proxy = self.connect_backup()
@@ -185,6 +186,8 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                 return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":"'+ret[1]+'"}')
         elif self.path == '/kv/update':
             if the_key and the_value:
+                the_key = unquote_plus(the_key)
+                the_value= unquote_plus(the_value)
                 old_t = garage.time_stamp[0]
                 ret = garage.update(the_key,the_value)
                 proxy = self.connect_backup()
