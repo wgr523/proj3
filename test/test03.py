@@ -65,14 +65,17 @@ class TestStringMethods(unittest.TestCase):
     
     def testone(self):
         self.do_insert({'key': 'sha', 'value': 'dashabi'})
-
-        self.do_update({'key': 'sha', 'value': 'cao'})
         self.od_insert({'key': 'sha', 'value': 'bi'})
+        self.do_delete('sha')
+        self.od_delete('sha')
+        self.od_update({'key': 'sha', 'value': '1'})
+        self.do_insert({'key': 'sha', 'value': '0'})
+        self.od_insert({'key': 'sha', 'value': '00'})
+        self.do_update({'key': 'sha', 'value': '1'})
+        self.do_update({'key': 'sha', 'value': '2'})
+        self.do_update({'key': 'sha', 'value': '3'})
+        self.do_update({'key': 'sha', 'value': '4'})
 
-        print (self.do_get('sha') )
-
-        self.do_update({'key': 'sha', 'value': 'nima'})
-        print (self.do_delete('sha') )
 
     def two(self):
         pid = os.fork()

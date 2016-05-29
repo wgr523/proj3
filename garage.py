@@ -35,4 +35,5 @@ def get_time_stamp():
 def set_time_stamp(t):
     time_stamp[0] = t
 def set_main_mem(_main_mem):
-    main_mem = _main_mem
+    main_mem.clear()
+    main_mem.update(_main_mem)

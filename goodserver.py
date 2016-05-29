@@ -93,14 +93,13 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                     os.kill(os.getpid(),signal.SIGKILL)
                 except:
                     pass
-            exit(0)
 
         if self.path == '/kvman/countkey':
             return self.str2file('{"result": "'+str(garage.countkey())+'"}')
         if self.path == '/kvman/dump':
             return self.dict2file(garage.dump())
         if self.path == '/kvman/gooddump':
-            return self.str2file('{"main_mem": '+json.dumps(garage.main_mem)+', "time_stamp": "'+str(garage.time_stamp[0])+'"}')
+            return self.str2file('{"main_mem": '+json.dumps(garage.main_mem)+', "time_stamp": "'+str(garage.get_time_stamp())+'"}')
         if self.path == '/':
             return self.str2file('<h1>Test</h1><br>Client address: '+str(self.client_address))
         pattern = re.compile('/kv/get\?key=(?P<the_key>.+)')
@@ -139,9 +138,9 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                 the_value = unquote_plus(the_value)
                 myold_t = garage.get_time_stamp()
                 ret = garage.insert(the_key,the_value)
-                mynew_t = time.time()
-                garage.set_time_stamp(mynew_t)
                 if ret:
+                    mynew_t = time.time()
+                    garage.set_time_stamp(mynew_t)
                     proxy = self.connect_backup()
                     if proxy: # below I consider what if RPC backup is wrong (not necessarily shutdown) (exception happens)
                         yourold_t = None
@@ -149,13 +148,15 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                             yourold_t = proxy.get_time_stamp() # what if exception happens here? yourold_t will be None
                             time_diff = myold_t - yourold_t #proxy.get_time_stamp()
                             if time_diff == 0:
-                                proxy.insert(the_key,the_value)
+                                if not proxy.insert(the_key,the_value):
+                                    raise
                                 proxy.set_time_stamp(mynew_t)
                             elif time_diff > 0:
                                 proxy.set_main_mem(garage.dump()) # what if exception happens here? it's ok because I am newer
-                                proxy.set_time_stamp(garage.get_time_stamp()) # ditto
+                                proxy.set_time_stamp(mynew_t) # ditto
                             else:
-                                proxy.insert(the_key,the_value)# what if exception happens here? ok because below we (p and b) both delete (and set back time)
+                                if not proxy.insert(the_key,the_value):# what if exception happens here? ok because below we (p and b) both delete (and set back time)
+                                    raise
                                 proxy.set_time_stamp(mynew_t)
                                 garage.set_main_mem(proxy.dump())
                                 garage.set_time_stamp(mynew_t)
@@ -178,29 +179,78 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
         elif self.path == '/kv/delete':
             if the_key:
                 the_key = unquote_plus(the_key)
-                old_t = garage.time_stamp[0]
+                myold_t = garage.get_time_stamp()
                 ret = garage.delete(the_key)
-                proxy = self.connect_backup()
-                if proxy:
-                    if proxy.get_time_stamp() < old_t:
-                        proxy.set_main_mem(garage.main_mem)
-                    else:
-                        proxy.delete(the_key)
-                    proxy.set_time_stamp(garage.time_stamp[0])
+                if ret[0]:
+                    mynew_t = time.time()
+                    garage.set_time_stamp(mynew_t)
+                    proxy = self.connect_backup()
+                    if proxy:
+                        yourold_t = None
+                        try:
+                            yourold_t = proxy.get_time_stamp() # what if exception happens here? yourold_t will be None
+                            time_diff = myold_t - yourold_t #proxy.get_time_stamp()
+                            if time_diff == 0:
+                                if not proxy.delete(the_key):
+                                    raise
+                                proxy.set_time_stamp(mynew_t)
+                            elif time_diff > 0:
+                                proxy.set_main_mem(garage.dump())
+                                proxy.set_time_stamp(mynew_t)
+                            else:
+                                if not proxy.delete(the_key)[0]:
+                                    raise
+                                proxy.set_time_stamp(mynew_t)
+                                garage.set_main_mem(proxy.dump())
+                                garage.set_time_stamp(mynew_t)
+                        except:
+                            garage.insert(the_key,ret[1])
+                            garage.set_time_stamp(myold_t)
+                            try:
+                                proxy.insert(the_key,ret[1])
+                                proxy.set_time_stamp(yourold_t)
+                            except:
+                                pass
+                            return self.str2file('{"success":"false", "info":"Backup connection error."}')
                 return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":"'+ret[1]+'"}')
         elif self.path == '/kv/update':
             if the_key and the_value:
                 the_key = unquote_plus(the_key)
                 the_value= unquote_plus(the_value)
-                old_t = garage.time_stamp[0]
+                myold_t = garage.get_time_stamp()
+                myold_v = garage.get(the_key)
                 ret = garage.update(the_key,the_value)
-                proxy = self.connect_backup()
-                if proxy:
-                    if proxy.get_time_stamp() < old_t:
-                        proxy.set_main_mem(garage.main_mem)
-                    else:
-                        proxy.update(the_key,the_value)
-                    proxy.set_time_stamp(garage.time_stamp[0])
+                if ret:
+                    mynew_t = time.time()
+                    garage.set_time_stamp(mynew_t)
+                    proxy = self.connect_backup()
+                    if proxy:
+                        yourold_t = None
+                        try:
+                            yourold_t = proxy.get_time_stamp()
+                            time_diff = myold_t - yourold_t
+                            if time_diff == 0:
+                                if not proxy.update(the_key,the_value):
+                                    raise
+                                proxy.set_time_stamp(mynew_t)
+                            elif time_diff > 0:
+                                proxy.set_main_mem(garage.dump())
+                                proxy.set_time_stamp(mynew_t)
+                            else:
+                                if not proxy.update(the_key,the_value):
+                                    raise
+                                proxy.set_time_stamp(mynew_t)
+                                garage.set_main_mem(proxy.dump())
+                                garage.set_time_stamp(mynew_t)
+                        except:
+                            garage.update(the_key,myold_v)
+                            garage.set_time_stamp(myold_t)
+                            try:
+                                proxy.update(the_key,myold_v)
+                                proxy.set_time_stamp(yourold_t)
+                            except:
+                                pass
+                            return self.str2file('{"success":"false", "info":"Backup connection error."}')
                 return self.str2file('{"success":"'+str(ret).lower()+'"}')
         return self.str2file('{"success":"false"}')
 

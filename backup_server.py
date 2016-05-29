@@ -21,8 +21,8 @@ def run(address , portnumber , primary_address):
     try:
         r = requests.get('http://'+primary_address+':'+str(portnumber)+'/kvman/gooddump')
         b = json.loads(r.text)
-        garage.main_mem = b['main_mem']
-        garage.time_stamp[0]= float(b['time_stamp'])
+        garage.set_main_mem(b['main_mem'])
+        garage.set_time_stamp(float(b['time_stamp']))
         print('primary connected, copied')
     except:
         print('primary offline')

@@ -39,7 +39,6 @@ class HTTPAndRPCRequestHandler(SimpleXMLRPCRequestHandler):
                     os.kill(os.getpid(),signal.SIGKILL)
                 except:
                     pass
-            exit(0)
 
         if self.path == '/kvman/countkey':
             return self.str2file('{"result": "'+str(garage.countkey())+'"}')

@@ -33,8 +33,8 @@ def run(handler_class, address , portnumber ):
             t = proxy.get_time_stamp()
             if t:
                 print('backup connected, copying')
-                garage.main_mem = proxy.dump()
-                garage.time_stamp[0] = t
+                garage.set_main_mem(proxy.dump())
+                garage.set_time_stamp(t)
                 print('copied')
             proxy = None
         except:
