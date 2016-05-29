@@ -4,14 +4,12 @@ time_stamp = [0] # how to use it? use time_stamp[0]
 def insert(key, value):
     if key not in main_mem:
         main_mem[key]=value
-        time_stamp[0] = time.time()
         return True
     else:
         return False
 def update(key, value):
     if key in main_mem:
         main_mem[key]=value
-        time_stamp[0] = time.time()
         return True
     else:
         return False
@@ -19,7 +17,6 @@ def delete(key):
     if key in main_mem:
         ret = main_mem[key]
         del main_mem[key]
-        time_stamp[0] = time.time()
         return (True,ret)
     else:
         return (False,'error')

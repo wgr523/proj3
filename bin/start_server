@@ -1,9 +1,9 @@
 if [ $1 == "-p" ]
 then
-	nohup python3 primary_server.py > primary.log 2>&1&
+	nohup python3 primary_server.py > conf/primary.log 2>&1&
 	echo $! > conf/primary.pid
 elif [ $1 == "-b" ]
 then
-	nohup python3 backup_server.py > backup.log 2>&1&
+	nohup python3 backup_server.py > conf/backup.log 2>&1&
 	echo $! > conf/backup.pid
 fi

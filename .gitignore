@@ -3,3 +3,4 @@
 *.pyc
 nohup.out
 *.log
+*.pid
