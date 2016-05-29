@@ -18,20 +18,27 @@ class TestMethods(unittest.TestCase):
     path_insert='/kv/insert'
     path_update='/kv/update'
     path_delete='/kv/delete'
-    path_get='/kv/get?key='
+    path_get='/kv/get'
 
     def setUp(self):
         with open('../conf/settings.conf') as f:
             d = json.load(f)
             self.url = 'http://'+d['primary']+':'+d['port']
 
-    def testone(self):
+    def one(self):
         payload = {'key': 'sha cha&+="*#@$++---====+++', 'value' :'he he'} # test space
         r = requests.post(self.url+self.path_insert, data=payload)
         print(r.text)
         payload = {'key': '韩国人越南人', 'value' :'和谐'} # test Chinese
         r = requests.post(self.url+self.path_insert, data=payload)
         print(r.text)
+
+    def testgetter(self):
+        payload = {'key': 'sha cha&+="*#@$++---====+++'}
+        r = requests.get(self.url+self.path_get, params=payload)
+        print(r.url)
+        print(r.text)
+        
 
 
 if __name__ == '__main__':

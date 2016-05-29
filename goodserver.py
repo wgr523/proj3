@@ -108,7 +108,7 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
             the_key = m.group('the_key')
             the_key = unquote_plus(the_key)
             ret = garage.get(the_key)
-            return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":"'+ret[1]+'"}')
+            return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":'+json.dumps(ret[1])+'}')
         return self.str2file('{"success":"false"}')
 
     def simple_post(self):
@@ -276,8 +276,8 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
         ''' d is dictionary, similar to str2file(). by wgr'''
         r = []
         enc = sys.getfilesystemencoding()
-        for key in d:
-            r.append('["'+key+'","'+d[key]+'"]')
+        for key,value in d.items():
+            r.append('['+json.dumps(key)+','+json.dumps(value)+']')
         the_string = '['+', '.join(r)+']'
         encoded = the_string.encode(enc, 'surrogateescape')
         f = io.BytesIO()
