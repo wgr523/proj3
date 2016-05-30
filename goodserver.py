@@ -6,6 +6,7 @@ import sys
 import time
 import re
 import signal
+import threading
 import json
 import xmlrpc.client
 from urllib.parse import unquote_plus
@@ -95,20 +96,32 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                     pass
 
         if self.path == '/kvman/countkey':
-            return self.str2file('{"result": "'+str(garage.countkey())+'"}')
+            garage.before_read()
+            f = self.str2file('{"result": "'+str(garage.countkey())+'"}')
+            garage.after_read()
+            return f
         if self.path == '/kvman/dump':
-            return self.dict2file(garage.dump())
+            garage.before_read()
+            f = self.dict2file(garage.dump())
+            garage.after_read()
+            return f
         if self.path == '/kvman/gooddump':
-            return self.str2file('{"main_mem": '+json.dumps(garage.main_mem)+', "time_stamp": "'+str(garage.get_time_stamp())+'"}')
+            garage.before_read()
+            f = self.str2file('{"main_mem": '+json.dumps(garage.main_mem)+', "time_stamp": "'+str(garage.get_time_stamp())+'"}')
+            garage.after_read()
+            return f
         if self.path == '/':
-            return self.str2file('<h1>Test</h1><br>Client address: '+str(self.client_address))
+            return self.str2file('Test<br>Client address: '+str(self.client_address)+'<br>Thread: '+threading.currentThread().getName())
         pattern = re.compile('/kv/get\?key=(?P<the_key>.+)')
         m = pattern.match(self.path)
         if m:
             the_key = m.group('the_key')
             the_key = unquote_plus(the_key)
+            garage.before_read()
             ret = garage.get(the_key)
-            return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":'+json.dumps(ret[1])+'}')
+            f = self.str2file('{"success":"'+str(ret[0]).lower()+'","value":'+json.dumps(ret[1])+'}')
+            garage.after_read()
+            return f
         return self.str2file('{"success":"false"}')
 
     def simple_post(self):
@@ -136,6 +149,7 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
             if the_key and the_value:
                 the_key = unquote_plus(the_key)
                 the_value = unquote_plus(the_value)
+                garage.before_write()
                 myold_t = garage.get_time_stamp()
                 ret = garage.insert(the_key,the_value)
                 if ret:
@@ -174,11 +188,14 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                                 proxy.set_time_stamp(yourold_t)
                             except:
                                 pass
+                            garage.after_write()
                             return self.str2file('{"success":"false", "info":"Backup connection error."}')
+                garage.after_write()
                 return self.str2file('{"success":"'+str(ret).lower()+'"}')
         elif self.path == '/kv/delete':
             if the_key:
                 the_key = unquote_plus(the_key)
+                garage.before_write()
                 myold_t = garage.get_time_stamp()
                 ret = garage.delete(the_key)
                 if ret[0]:
@@ -211,12 +228,15 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                                 proxy.set_time_stamp(yourold_t)
                             except:
                                 pass
+                            garage.after_write()
                             return self.str2file('{"success":"false", "info":"Backup connection error."}')
+                garage.after_write()
                 return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":"'+ret[1]+'"}')
         elif self.path == '/kv/update':
             if the_key and the_value:
                 the_key = unquote_plus(the_key)
                 the_value= unquote_plus(the_value)
+                garage.before_write()
                 myold_t = garage.get_time_stamp()
                 myold_v = garage.get(the_key)
                 ret = garage.update(the_key,the_value)
@@ -250,7 +270,9 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                                 proxy.set_time_stamp(yourold_t)
                             except:
                                 pass
+                            garage.after_write()
                             return self.str2file('{"success":"false", "info":"Backup connection error."}')
+                garage.after_write()
                 return self.str2file('{"success":"'+str(ret).lower()+'"}')
         return self.str2file('{"success":"false"}')
 

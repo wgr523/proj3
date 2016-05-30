@@ -27,6 +27,11 @@ class HTTPAndRPCRequestHandler(SimpleXMLRPCRequestHandler):
             f.close()
 
     def simple_get(self):
+        '''backup's api won't be called during lots of operation,
+        and they are read-only, so don't add any lock/condition
+        actually I can do this by adding lock/condition into RPC,
+        but too troublesome
+        '''
         if self.path == '/kvman/shutdown':
             try:
                 f = open('conf/backup.pid')
@@ -54,7 +59,7 @@ class HTTPAndRPCRequestHandler(SimpleXMLRPCRequestHandler):
             the_key = m.group('the_key')
             the_key = unquote_plus(the_key)
             ret = garage.get(the_key)
-            return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":"'+ret[1]+'"}')
+            return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":'+json.dumps(ret[1])+'}')
         return self.str2file('{"success":"false"}')
     
     def copyfile(self, source, outputfile):
@@ -77,8 +82,8 @@ class HTTPAndRPCRequestHandler(SimpleXMLRPCRequestHandler):
         ''' d is dictionary, similar to str2file(). by wgr'''
         r = []
         enc = sys.getfilesystemencoding()
-        for key in d:
-            r.append('["'+key+'","'+d[key]+'"]')
+        for key,value in d.items():
+            r.append('['+json.dumps(key)+','+json.dumps(value)+']')
         the_string = '['+', '.join(r)+']'
         encoded = the_string.encode(enc, 'surrogateescape')
         f = io.BytesIO()

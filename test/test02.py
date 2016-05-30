@@ -25,7 +25,7 @@ class TestMethods(unittest.TestCase):
             d = json.load(f)
             self.url = 'http://'+d['primary']+':'+d['port']
 
-    def one(self):
+    def testone(self):
         payload = {'key': 'sha cha&+="*#@$++---====+++', 'value' :'he he'} # test space
         r = requests.post(self.url+self.path_insert, data=payload)
         print(r.text)
@@ -33,7 +33,7 @@ class TestMethods(unittest.TestCase):
         r = requests.post(self.url+self.path_insert, data=payload)
         print(r.text)
 
-    def testgetter(self):
+    def getter(self):
         payload = {'key': 'sha cha&+="*#@$++---====+++'}
         r = requests.get(self.url+self.path_get, params=payload)
         print(r.url)

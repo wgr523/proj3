@@ -2,10 +2,15 @@ import sys
 import json
 import os
 from http.server import HTTPServer
+from socketserver import ThreadingMixIn
 from goodserver import PrimaryHTTPRequestHandler
 import xmlrpc.client
 import socket 
 import garage
+
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    """Handle requests in a separate thread."""
+    pass
 
 def connect_backup():
     f = open('conf/settings.conf')
@@ -22,7 +27,7 @@ def connect_backup():
     return proxy
 
 def run(handler_class, address , portnumber ):
-    server_class=HTTPServer
+    server_class = ThreadedHTTPServer
     server_address = (address,portnumber)
     httpd = server_class(server_address,handler_class)
     proxy = connect_backup()

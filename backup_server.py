@@ -1,12 +1,17 @@
 import json
 import os
 from xmlrpc.server import SimpleXMLRPCServer
-#from xmlrpc.server import SimpleXMLRPCRequestHandler
+from socketserver import ThreadingMixIn
 from badserver import HTTPAndRPCRequestHandler
 import requests
 import garage
+
+class ThreadedHTTPServer(ThreadingMixIn, SimpleXMLRPCServer):
+    """Handle requests in a separate thread."""
+    pass
+
 def run(address , portnumber , primary_address):
-    server_class=SimpleXMLRPCServer
+    server_class=ThreadedHTTPServer
     server_address = (address,portnumber)
     server = server_class(server_address, requestHandler=HTTPAndRPCRequestHandler, allow_none=True)
     server.register_function(garage.insert,"insert")
