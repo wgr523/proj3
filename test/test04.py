@@ -39,13 +39,13 @@ class TestMethods(unittest.TestCase):
         payload = {'key': tmp, 'value' :'1'}
         try:
             r = requests.post(self.url+self.path_insert, data=payload)
-           # if parse_output(r.text,'success') == 'false':
-           #     with self.lock:
-           #         self.abn=self.abn+1
-        except:
-            #with self.lock:
-                #self.abn=self.abn+1
-            print('wrong')
+            if parse_output(r,'success') == 'false':
+                with self.lock:
+                    self.abn=self.abn+1
+        except Exception as err:
+            print(err)
+            with self.lock:
+                self.abn=self.abn+1
     def testmanymany(self):
         #payload = {'key': 'BB', 'value' :'-1'}
         #r = requests.post(self.url+self.path_insert, data=payload)

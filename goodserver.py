@@ -153,15 +153,14 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
             if the_key and the_value:
                 the_key = unquote_plus(the_key)
                 the_value = unquote_plus(the_value)
-                rw_lock = garage.get_rw_create(the_key)
-                rw_lock.before_write()
-                ret = garage.insert(the_key,the_value)
-                if ret:
-                    proxy = self.connect_backup()
-                    if proxy:
+                proxy = self.connect_backup()
+                if proxy:
+                    rw_lock = garage.get_rw_create(the_key)
+                    rw_lock.before_write()
+                    ret = garage.insert(the_key,the_value)
+                    if ret:
                         try:
-                            if not proxy.insert(the_key,the_value):
-                                raise
+                            proxy.insert_no_matter_what(the_key,the_value)
                         except:
                             garage.delete(the_key)
                             try:
@@ -170,54 +169,55 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                                 pass
                             rw_lock.after_write()
                             return self.str2file('{"success":"false", "info":"Backup connection error."}')
-                rw_lock.after_write()
-                return self.str2file('{"success":"'+str(ret).lower()+'"}')
+                    rw_lock.after_write()
+                    return self.str2file('{"success":"'+str(ret).lower()+'"}')
+                return self.str2file('{"success":"false"}')
         elif self.path == '/kv/delete':
             if the_key:
                 the_key = unquote_plus(the_key)
-                rw_lock = garage.get_rw_create(the_key)
-                rw_lock.before_write()
-                ret = garage.delete(the_key)
-                if ret[0]:
-                    proxy = self.connect_backup()
-                    if proxy:
+                proxy = self.connect_backup()
+                if proxy:
+                    rw_lock = garage.get_rw_create(the_key)
+                    rw_lock.before_write()
+                    ret = garage.delete(the_key)
+                    if ret[0]:
                         try:
-                            if not proxy.delete(the_key):
-                                raise
+                            proxy.delete(the_key):
                         except:
                             garage.insert(the_key,ret[1])
                             try:
-                                proxy.insert(the_key,ret[1])
+                                proxy.insert_no_matter_what(the_key,ret[1])
                             except:
                                 pass
                             rw_lock.after_write()
                             return self.str2file('{"success":"false", "info":"Backup connection error."}')
-                rw_lock.after_write()
-                return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":"'+ret[1]+'"}')
+                    rw_lock.after_write()
+                    return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":"'+ret[1]+'"}')
+                return self.str2file('{"success":"false"}')
         elif self.path == '/kv/update':
             if the_key and the_value:
                 the_key = unquote_plus(the_key)
                 the_value= unquote_plus(the_value)
-                rw_lock = garage.get_rw_create(the_key)
-                rw_lock.before_write()
-                myold_v = garage.get(the_key)
-                ret = garage.update(the_key,the_value)
-                if ret:
-                    proxy = self.connect_backup()
-                    if proxy:
+                proxy = self.connect_backup()
+                if proxy:
+                    rw_lock = garage.get_rw_create(the_key)
+                    rw_lock.before_write()
+                    myold_v = garage.get(the_key)
+                    ret = garage.update(the_key,the_value)
+                    if ret:
                         try:
-                            if not proxy.update(the_key,the_value):
-                                raise
+                            proxy.insert_no_matter_what(the_key,the_value):
                         except:
                             garage.update(the_key,myold_v)
                             try:
-                                proxy.update(the_key,myold_v)
+                                proxy.insert_no_matter_what(the_key,myold_v)
                             except:
                                 pass
                             rw_lock.after_write()
                             return self.str2file('{"success":"false", "info":"Backup connection error."}')
-                rw_lock.after_write()
-                return self.str2file('{"success":"'+str(ret).lower()+'"}')
+                    rw_lock.after_write()
+                    return self.str2file('{"success":"'+str(ret).lower()+'"}')
+                return self.str2file('{"success":"false"}')
         return self.str2file('{"success":"false"}')
 
 
