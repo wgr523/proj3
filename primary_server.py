@@ -35,12 +35,11 @@ def run(handler_class, address , portnumber ):
         print('backup offline')
     while proxy:
         try:
-            t = proxy.get_time_stamp()
-            if t:
-                print('backup connected, copying')
-                garage.set_main_mem(proxy.dump())
-                garage.set_time_stamp(t)
-                print('copied')
+            #t = proxy.get_time_stamp()
+            print('backup connected, copying')
+            garage.set_main_mem(proxy.dump())
+            #garage.set_time_stamp(t)
+            print('copied')
             proxy = None
         except:
             proxy = connect_backup()

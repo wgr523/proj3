@@ -155,42 +155,17 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                 the_value = unquote_plus(the_value)
                 rw_lock = garage.get_rw_create(the_key)
                 rw_lock.before_write()
-                myold_t = garage.get_time_stamp()
                 ret = garage.insert(the_key,the_value)
                 if ret:
-                    mynew_t = time.time()
-                    garage.set_time_stamp(mynew_t)
                     proxy = self.connect_backup()
-                    if proxy: # below I consider what if RPC backup is wrong (not necessarily shutdown) (exception happens)
-                        yourold_t = None
+                    if proxy:
                         try:
-                            yourold_t = proxy.get_time_stamp() # what if exception happens here? yourold_t will be None
-                            time_diff = myold_t - yourold_t #proxy.get_time_stamp()
-                            if time_diff == 0:
-                                if not proxy.insert(the_key,the_value):
-                                    raise
-                                proxy.set_time_stamp(mynew_t)
-                            elif time_diff > 0:
-                                proxy.set_main_mem(garage.dump()) # what if exception happens here? it's ok because I am newer
-                                proxy.set_time_stamp(mynew_t) # ditto
-                            else:
-                                if not proxy.insert(the_key,the_value):# what if exception happens here? ok because below we (p and b) both delete (and set back time)
-                                    raise
-                                proxy.set_time_stamp(mynew_t)
-                                garage.set_main_mem(proxy.dump())
-                                garage.set_time_stamp(mynew_t)
-
-                            '''what if proxy insert false? don't care, because next action will handle
-                            what if exception happens here? note that this WILL update proxy's time stamp
-                            if ptime == btime (time_diff==0): ok because below we (p and b) both delete (and set back time)
-                            if ptime < btime (time_diff<0): could this happen??? yes, under partition... see below
-                            '''
+                            if not proxy.insert(the_key,the_value):
+                                raise
                         except:
                             garage.delete(the_key)
-                            garage.set_time_stamp(myold_t)
                             try:
-                                proxy.delete(the_key) # what if exception happens here? don't delete, ok. delete but don't set time, bug happens!!!!! See CAP theorem
-                                proxy.set_time_stamp(yourold_t)
+                                proxy.delete(the_key)
                             except:
                                 pass
                             rw_lock.after_write()
@@ -202,36 +177,17 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                 the_key = unquote_plus(the_key)
                 rw_lock = garage.get_rw_create(the_key)
                 rw_lock.before_write()
-                myold_t = garage.get_time_stamp()
                 ret = garage.delete(the_key)
                 if ret[0]:
-                    mynew_t = time.time()
-                    garage.set_time_stamp(mynew_t)
                     proxy = self.connect_backup()
                     if proxy:
-                        yourold_t = None
                         try:
-                            yourold_t = proxy.get_time_stamp() # what if exception happens here? yourold_t will be None
-                            time_diff = myold_t - yourold_t #proxy.get_time_stamp()
-                            if time_diff == 0:
-                                if not proxy.delete(the_key):
-                                    raise
-                                proxy.set_time_stamp(mynew_t)
-                            elif time_diff > 0:
-                                proxy.set_main_mem(garage.dump())
-                                proxy.set_time_stamp(mynew_t)
-                            else:
-                                if not proxy.delete(the_key)[0]:
-                                    raise
-                                proxy.set_time_stamp(mynew_t)
-                                garage.set_main_mem(proxy.dump())
-                                garage.set_time_stamp(mynew_t)
+                            if not proxy.delete(the_key):
+                                raise
                         except:
                             garage.insert(the_key,ret[1])
-                            garage.set_time_stamp(myold_t)
                             try:
                                 proxy.insert(the_key,ret[1])
-                                proxy.set_time_stamp(yourold_t)
                             except:
                                 pass
                             rw_lock.after_write()
@@ -244,37 +200,18 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                 the_value= unquote_plus(the_value)
                 rw_lock = garage.get_rw_create(the_key)
                 rw_lock.before_write()
-                myold_t = garage.get_time_stamp()
                 myold_v = garage.get(the_key)
                 ret = garage.update(the_key,the_value)
                 if ret:
-                    mynew_t = time.time()
-                    garage.set_time_stamp(mynew_t)
                     proxy = self.connect_backup()
                     if proxy:
-                        yourold_t = None
                         try:
-                            yourold_t = proxy.get_time_stamp()
-                            time_diff = myold_t - yourold_t
-                            if time_diff == 0:
-                                if not proxy.update(the_key,the_value):
-                                    raise
-                                proxy.set_time_stamp(mynew_t)
-                            elif time_diff > 0:
-                                proxy.set_main_mem(garage.dump())
-                                proxy.set_time_stamp(mynew_t)
-                            else:
-                                if not proxy.update(the_key,the_value):
-                                    raise
-                                proxy.set_time_stamp(mynew_t)
-                                garage.set_main_mem(proxy.dump())
-                                garage.set_time_stamp(mynew_t)
+                            if not proxy.update(the_key,the_value):
+                                raise
                         except:
                             garage.update(the_key,myold_v)
-                            garage.set_time_stamp(myold_t)
                             try:
                                 proxy.update(the_key,myold_v)
-                                proxy.set_time_stamp(yourold_t)
                             except:
                                 pass
                             rw_lock.after_write()

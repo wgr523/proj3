@@ -3,7 +3,9 @@ mutex = threading.RLock()
 lock_mem = {}
 
 main_mem = {}
+bool_mem = {}
 time_stamp = [0] # how to use it? use time_stamp[0]
+time_mutex = threading.RLock()
 
 class RWOne:
     def __init__(self,key):
@@ -53,6 +55,8 @@ def insert(key, value):
         return True
     else:
         return False
+def insert_no_matter_what(key, value):
+    main_mem[key]=value
 def update(key, value):
     if key in main_mem:
         main_mem[key]=value
@@ -83,3 +87,14 @@ def set_time_stamp(t):
 def set_main_mem(_main_mem):
     main_mem.clear()
     main_mem.update(_main_mem)
+def success_backup(key):
+    bool_mem[key]=True
+def fail_backup(key): # success in primary, fail in backup
+    bool_mem[key]=False
+def in_backup(key): # success in backup?
+    if key not in bool_mem:
+        return False
+    return bool_mem[key]
+def delete_backup(key):
+    if key in bool_mem:
+        del bool_mem[key]
