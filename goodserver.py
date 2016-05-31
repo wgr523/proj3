@@ -182,7 +182,7 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                     ret = garage.delete(the_key)
                     if ret[0]:
                         try:
-                            proxy.delete(the_key):
+                            proxy.delete(the_key)
                         except:
                             garage.insert(the_key,ret[1])
                             try:
@@ -206,7 +206,7 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                     ret = garage.update(the_key,the_value)
                     if ret:
                         try:
-                            proxy.insert_no_matter_what(the_key,the_value):
+                            proxy.insert_no_matter_what(the_key,the_value)
                         except:
                             garage.update(the_key,myold_v)
                             try:
