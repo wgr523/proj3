@@ -1,10 +1,10 @@
 if [ $1 == "-p" ]
 then
-	kill `cat conf/primary.pid`
+	kill -9 `cat conf/primary.pid`
 	rm conf/primary.pid
 elif [ $1 == "-b" ]
 then
-	kill `cat conf/backup.pid`
+	kill -9 `cat conf/backup.pid`
 	rm conf/backup.pid
 fi
 

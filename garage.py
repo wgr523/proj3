@@ -1,44 +1,50 @@
 import threading
-sync_var = [0,0,0,0] # active reader, waiting reader, active writer, waiting writer
-lock = threading.RLock()
-okRead = threading.Condition(lock)
-okWrite = threading.Condition(lock)
+mutex = threading.RLock()
+lock_mem = {}
+
 main_mem = {}
 time_stamp = [0] # how to use it? use time_stamp[0]
 
-def before_read():
-    ''' reader use this to get synchronization'''
-    lock.acquire()
-    try:
-        while sync_var[2]+sync_var[3] > 0:
-            sync_var[1]=sync_var[1]+1
-            okRead.wait()
-            sync_var[1]=sync_var[1]-1
-        sync_var[0]=sync_var[0]+1
-    finally:
-        lock.release()
-def after_read():
-    lock.acquire()
-    try:
-        sync_var[0]=sync_var[0]-1
-        if sync_var[0]==0 and sync_var[3]>0:
-            okWrite.notify()
-    finally:
-        lock.release()
-def before_write():
-    with lock: # equivalent to lock.acquire, try, finally
-        while sync_var[0]+sync_var[2] > 0:
-            sync_var[3]=sync_var[3]+1
-            okWrite.wait()
-            sync_var[3]=sync_var[3]-1
-        sync_var[2]=sync_var[2]+1
-def after_write():
-    with lock:
-        sync_var[2]=sync_var[2]-1
-        if sync_var[3] > 0:
-            okWrite.notify()
-        elif sync_var[1] > 0:
-            okRead.notify_all()
+class RWOne:
+    def __init__(self,key):
+        self.key=key
+        self.sync = [0,0,0,0] # active reader, waiting reader, active writer, waiting writer
+        self.lock = threading.RLock()
+        self.okRead = threading.Condition(self.lock)
+        self.okWrite = threading.Condition(self.lock)
+    def before_read(self):
+        ''' reader use this to get synchronization'''
+        with self.lock:
+            while self.sync[2]+self.sync[3] > 0:
+                self.sync[1]=self.sync[1]+1
+                self.okRead.wait()
+                self.sync[1]=self.sync[1]-1
+            self.sync[0]=self.sync[0]+1
+    def after_read(self):
+        with self.lock:
+            self.sync[0]=self.sync[0]-1
+            if self.sync[0]==0 and self.sync[3]>0:
+                self.okWrite.notify()
+    def before_write(self):
+        with self.lock: # equivalent to lock.acquire, try, finally
+            while self.sync[0]+self.sync[2] > 0:
+                self.sync[3]=self.sync[3]+1
+                self.okWrite.wait()
+                self.sync[3]=self.sync[3]-1
+            self.sync[2]=self.sync[2]+1
+    def after_write(self):
+        with self.lock:
+            self.sync[2]=self.sync[2]-1
+            if self.sync[3] > 0:
+                self.okWrite.notify()
+            elif self.sync[1] > 0:
+                self.okRead.notify_all()
+def get_rw_create(key):
+    with mutex:
+        if key not in lock_mem:
+            lock_mem[key]=RWOne(key)
+    return lock_mem[key]
+
 
         
 def insert(key, value):

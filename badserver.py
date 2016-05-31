@@ -52,14 +52,8 @@ class HTTPAndRPCRequestHandler(SimpleXMLRPCRequestHandler):
         if self.path == '/kvman/gooddump':
             return self.str2file('{"main_mem": '+json.dumps(garage.main_mem)+', "time_stamp": "'+str(garage.time_stamp[0])+'"}')
         if self.path == '/':
-            return self.str2file('<h1>Test</h1><br>Client address: '+str(self.client_address))
-        pattern = re.compile('/kv/get\?key=(?P<the_key>.+)')
-        m = pattern.match(self.path)
-        if m:
-            the_key = m.group('the_key')
-            the_key = unquote_plus(the_key)
-            ret = garage.get(the_key)
-            return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":'+json.dumps(ret[1])+'}')
+            return self.str2file('Test<br>This is backup<br>Client address: '+str(self.client_address)+'<br>Thread: '+threading.currentThread().getName())
+
         return self.str2file('{"success":"false"}')
     
     def copyfile(self, source, outputfile):
