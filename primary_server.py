@@ -10,11 +10,20 @@ import garage
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Handle requests in a separate thread."""
-    pass
+    backup_address = None
+    backup_port = None
+    def set_backup(self,a,p):
+        self.backup_address=a
+        self.backup_port=p
 
 def connect_backup():
     f = open('conf/settings.conf')
     d = json.load(f)
+    global backup_address
+    backup_address = d['backup']
+    global backup_port
+    backup_port= d['port']
+    f.close()
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(0.1)
@@ -31,6 +40,7 @@ def run(handler_class, address , portnumber ):
     server_address = (address,portnumber)
     httpd = server_class(server_address,handler_class)
     proxy = connect_backup()
+    httpd.set_backup(backup_address, backup_port)
     if not proxy:
         print('backup offline')
     while proxy:

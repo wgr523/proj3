@@ -63,9 +63,14 @@ class TestStringMethods(unittest.TestCase):
         self.assertEqual(parse_output(r,'success'),'false')
         return parse_output(r,'value')
     
-    def one(self):
+    def testone(self):
         self.do_insert({'key': 'sha', 'value': 'dashabi'})
         self.od_insert({'key': 'sha', 'value': 'bi'})
+        self.do_insert({'key': 'sh1', 'value': 'di'})
+        self.do_insert({'key': 'sh2', 'value': 'di'})
+        self.do_insert({'key': 'sh3', 'value': 'di'})
+        self.do_insert({'key': 'sh4', 'value': 'di'})
+        self.do_insert({'key': 'sh5', 'value': 'di'})
         self.do_delete('sha')
         self.od_delete('sha')
         self.od_update({'key': 'sha', 'value': '1'})
@@ -77,7 +82,7 @@ class TestStringMethods(unittest.TestCase):
         self.do_update({'key': 'sha', 'value': '4'})
 
 
-    def testtwo(self):
+    def two(self):
         pid = os.fork()
         if pid != 0:
             sleep(1)

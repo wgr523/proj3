@@ -3,7 +3,7 @@ mutex = threading.RLock()
 lock_mem = {}
 
 main_mem = {}
-bool_mem = {}
+bool_mem = set()
 time_stamp = [0] # how to use it? use time_stamp[0]
 time_mutex = threading.RLock()
 
@@ -87,14 +87,16 @@ def set_time_stamp(t):
 def set_main_mem(_main_mem):
     main_mem.clear()
     main_mem.update(_main_mem)
-def success_backup(key):
-    bool_mem[key]=True
+#def success_backup(key):
+#    bool_mem[key]=True
 def fail_backup(key): # success in primary, fail in backup
-    bool_mem[key]=False
-def in_backup(key): # success in backup?
-    if key not in bool_mem:
-        return False
-    return bool_mem[key]
-def delete_backup(key):
+    bool_mem.add(key)
+def fail_in_backup(key): # success in backup?
+    return key in bool_mem
+def delete_fail_backup(key):
     if key in bool_mem:
-        del bool_mem[key]
+        bool_mem.remove(key)
+def list_fail_backup():
+    return list(bool_mem)
+def clear_fail_backup():
+    bool_mem.clear()

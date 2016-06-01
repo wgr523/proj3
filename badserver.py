@@ -4,6 +4,7 @@ import shutil
 import signal
 import sys
 import json
+import collections
 
 from http import HTTPStatus
 
@@ -76,7 +77,8 @@ class HTTPAndRPCRequestHandler(SimpleXMLRPCRequestHandler):
         ''' d is dictionary, similar to str2file(). by wgr'''
         r = []
         enc = sys.getfilesystemencoding()
-        for key,value in d.items():
+        od = collections.OrderedDict(sorted(d.items()))
+        for key,value in od.items():
             r.append('['+json.dumps(key)+','+json.dumps(value)+']')
         the_string = '['+', '.join(r)+']'
         encoded = the_string.encode(enc, 'surrogateescape')

@@ -35,23 +35,26 @@ class TestMethods(unittest.TestCase):
         print(r.url)
         print(r.text)
     def func(self):
-        tmp = threading.currentThread().getName()[7:]
+        tmp = 'c'+threading.currentThread().getName()[7:]
         payload = {'key': tmp, 'value' :tmp}
         try:
-            r = requests.post(self.url+self.path_insert, data=payload)
-            for i in range(2):
-                payload = {'key': tmp, 'value' :str(i)}
+#            r = requests.post(self.url+self.path_insert, data=payload)
+#            if parse_output(r,'success') == 'false':
+#                with self.lock:
+#                    self.abn=self.abn+1
+            for i in range(1):
+                payload = {'key': tmp, 'value' :str(i+10)}
                 r = requests.post(self.url+self.path_update, data=payload)
                 if parse_output(r,'success') == 'false':
                     with self.lock:
                         self.abn=self.abn+1
-            payload = {'key': tmp}
-            r = requests.post(self.url+self.path_delete, data=payload)
-            if parse_output(r,'success') == 'false':
-                with self.lock:
-                    self.abn=self.abn+1
-            payload = {'key': tmp, 'value' : '-1'}
-            r = requests.post(self.url+self.path_insert, data=payload)
+#            payload = {'key': tmp}
+#            r = requests.post(self.url+self.path_delete, data=payload)
+#            if parse_output(r,'success') == 'false':
+#                with self.lock:
+#                    self.abn=self.abn+1
+#            payload = {'key': tmp, 'value' : '-1'}
+#            r = requests.post(self.url+self.path_insert, data=payload)
         except Exception as err:
             print(err)
             with self.lock:
@@ -59,7 +62,7 @@ class TestMethods(unittest.TestCase):
     def testmanymany(self):
         #payload = {'key': 'BB', 'value' :'-1'}
         #r = requests.post(self.url+self.path_insert, data=payload)
-        lu = 500
+        lu = 1000
         tt=[]
         for i in range(lu):
             t = Thread(target = self.func)

@@ -11,6 +11,7 @@ import json
 import xmlrpc.client
 from urllib.parse import unquote_plus
 import requests
+import collections
 
 from http import HTTPStatus
 
@@ -30,12 +31,11 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
     request omits the actual contents of the file.
 
     """
-
+#self.server
     server_version = "GeruiHTTP/0.0.3"
+    backup_address = None
+    backup_port = None
 
-    backup_address = None # string
-    backup_port = None # string
-    
     def do_GET(self):
         """Serve a GET request."""
         f = self.simple_get()
@@ -59,10 +59,8 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
 
     def connect_backup(self):
         if not self.backup_address or not self.backup_port:
-            f = open('conf/settings.conf')
-            d = json.load(f)
-            self.backup_address = d['backup']
-            self.backup_port = d['port']
+            self.backup_address = self.server.backup_address
+            self.backup_port = self.server.backup_port
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(0.1)
@@ -96,22 +94,17 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                     pass
 
         if self.path == '/kvman/countkey':
-            #garage.before_read()
             with garage.mutex:
                 f = self.str2file('{"result": "'+str(garage.countkey())+'"}')
-            #garage.after_read()
             return f
         if self.path == '/kvman/dump':
-            #garage.before_read()
             with garage.mutex:
                 f = self.dict2file(garage.dump())
-            #garage.after_read()
             return f
         if self.path == '/kvman/gooddump':
-            #garage.before_read()
             with garage.mutex:
                 f = self.str2file('{"main_mem": '+json.dumps(garage.main_mem)+', "time_stamp": "'+str(garage.get_time_stamp())+'"}')
-            #garage.after_read()
+                garage.clear_fail_backup()
             return f
         if self.path == '/':
             return self.str2file('Test<br>This is primary<br>Client address: '+str(self.client_address)+'<br>Thread: '+threading.currentThread().getName())
@@ -153,12 +146,13 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
             if the_key and the_value:
                 the_key = unquote_plus(the_key)
                 the_value = unquote_plus(the_value)
-                proxy = self.connect_backup()
-                if proxy:
-                    rw_lock = garage.get_rw_create(the_key)
-                    rw_lock.before_write()
-                    ret = garage.insert(the_key,the_value)
-                    if ret:
+                rw_lock = garage.get_rw_create(the_key)
+                rw_lock.before_write()
+                ret = garage.insert(the_key,the_value)
+                if ret:
+                    proxy = self.connect_backup()
+                    if proxy:
+                        #self.check_syn(proxy)
                         try:
                             proxy.insert_no_matter_what(the_key,the_value)
                         except:
@@ -168,19 +162,23 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                             except:
                                 pass
                             rw_lock.after_write()
+                            self.check_syn(proxy)
                             return self.str2file('{"success":"false", "info":"Backup connection error."}')
-                    rw_lock.after_write()
-                    return self.str2file('{"success":"'+str(ret).lower()+'"}')
-                return self.str2file('{"success":"false"}')
+                    else:
+                        garage.fail_backup(the_key)
+                rw_lock.after_write()
+                self.check_syn(proxy)
+                return self.str2file('{"success":"'+str(ret).lower()+'"}')
         elif self.path == '/kv/delete':
             if the_key:
                 the_key = unquote_plus(the_key)
-                proxy = self.connect_backup()
-                if proxy:
-                    rw_lock = garage.get_rw_create(the_key)
-                    rw_lock.before_write()
-                    ret = garage.delete(the_key)
-                    if ret[0]:
+                rw_lock = garage.get_rw_create(the_key)
+                rw_lock.before_write()
+                ret = garage.delete(the_key)
+                if ret[0]:
+                    proxy = self.connect_backup()
+                    if proxy:
+                        #self.check_syn(proxy)
                         try:
                             proxy.delete(the_key)
                         except:
@@ -190,21 +188,25 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                             except:
                                 pass
                             rw_lock.after_write()
+                            self.check_syn(proxy)
                             return self.str2file('{"success":"false", "info":"Backup connection error."}')
-                    rw_lock.after_write()
-                    return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":"'+ret[1]+'"}')
-                return self.str2file('{"success":"false"}')
+                    else:
+                        garage.fail_backup(the_key)
+                rw_lock.after_write()
+                self.check_syn(proxy)
+                return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":"'+ret[1]+'"}')
         elif self.path == '/kv/update':
             if the_key and the_value:
                 the_key = unquote_plus(the_key)
                 the_value= unquote_plus(the_value)
-                proxy = self.connect_backup()
-                if proxy:
-                    rw_lock = garage.get_rw_create(the_key)
-                    rw_lock.before_write()
-                    myold_v = garage.get(the_key)
-                    ret = garage.update(the_key,the_value)
-                    if ret:
+                rw_lock = garage.get_rw_create(the_key)
+                rw_lock.before_write()
+                myold_v = garage.get(the_key)
+                ret = garage.update(the_key,the_value)
+                if ret:
+                    proxy = self.connect_backup()
+                    if proxy:
+                        #self.check_syn(proxy)
                         try:
                             proxy.insert_no_matter_what(the_key,the_value)
                         except:
@@ -214,11 +216,35 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                             except:
                                 pass
                             rw_lock.after_write()
+                            self.check_syn(proxy)
                             return self.str2file('{"success":"false", "info":"Backup connection error."}')
-                    rw_lock.after_write()
-                    return self.str2file('{"success":"'+str(ret).lower()+'"}')
-                return self.str2file('{"success":"false"}')
+                    else:
+                        garage.fail_backup(the_key)
+                rw_lock.after_write()
+                self.check_syn(proxy)
+                return self.str2file('{"success":"'+str(ret).lower()+'"}')
         return self.str2file('{"success":"false"}')
+
+    def check_syn(self,proxy):
+        with garage.mutex:
+            l = garage.list_fail_backup()
+            mem = garage.dump()
+            for key in l:
+                if key in mem:
+                    v=mem[key]
+                    try:
+                        proxy.insert_no_matter_what(key,v)
+                        garage.delete_fail_backup(key)
+                    except Exception as err:
+                        print(err)
+                        pass
+                else:
+                    try:
+                        proxy.delete(key)
+                        garage.delete_fail_backup(key)
+                    except Exception as err:
+                        print(err)
+                        pass
 
 
     def copyfile(self, source, outputfile):
@@ -242,7 +268,8 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
         ''' d is dictionary, similar to str2file(). by wgr'''
         r = []
         enc = sys.getfilesystemencoding()
-        for key,value in d.items():
+        od = collections.OrderedDict(sorted(d.items()))
+        for key,value in od.items():
             r.append('['+json.dumps(key)+','+json.dumps(value)+']')
         the_string = '['+', '.join(r)+']'
         encoded = the_string.encode(enc, 'surrogateescape')
