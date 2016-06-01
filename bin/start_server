@@ -1,3 +1,4 @@
+#!/bin/sh
 if [ $1 == "-p" ]
 then
 	nohup python3 -u primary_server.py > conf/primary.log 2>&1&

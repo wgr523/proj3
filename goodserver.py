@@ -35,6 +35,7 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
     server_version = "GeruiHTTP/0.0.3"
     backup_address = None
     backup_port = None
+    proxy = None
 
     def do_GET(self):
         """Serve a GET request."""
@@ -61,6 +62,8 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
         if not self.backup_address or not self.backup_port:
             self.backup_address = self.server.backup_address
             self.backup_port = self.server.backup_port
+        if self.proxy:
+            return self.proxy
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(0.1)
@@ -69,8 +72,8 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
         except:
             return None
         url = 'http://'+self.backup_address+':'+self.backup_port
-        proxy = xmlrpc.client.ServerProxy(url)
-        return proxy
+        self.proxy = xmlrpc.client.ServerProxy(url)
+        return self.proxy
 
     def simple_get(self):
         if self.path == '/back':
@@ -155,6 +158,7 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                         #self.check_syn(proxy)
                         try:
                             proxy.insert_no_matter_what(the_key,the_value)
+                            self.check_syn(proxy)
                         except:
                             garage.delete(the_key)
                             try:
@@ -167,7 +171,6 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                     else:
                         garage.fail_backup(the_key)
                 rw_lock.after_write()
-                self.check_syn(proxy)
                 return self.str2file('{"success":"'+str(ret).lower()+'"}')
         elif self.path == '/kv/delete':
             if the_key:
@@ -181,6 +184,7 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                         #self.check_syn(proxy)
                         try:
                             proxy.delete(the_key)
+                            self.check_syn(proxy)
                         except:
                             garage.insert(the_key,ret[1])
                             try:
@@ -193,7 +197,6 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                     else:
                         garage.fail_backup(the_key)
                 rw_lock.after_write()
-                self.check_syn(proxy)
                 return self.str2file('{"success":"'+str(ret[0]).lower()+'","value":"'+ret[1]+'"}')
         elif self.path == '/kv/update':
             if the_key and the_value:
@@ -209,6 +212,7 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                         #self.check_syn(proxy)
                         try:
                             proxy.insert_no_matter_what(the_key,the_value)
+                            self.check_syn(proxy)
                         except:
                             garage.update(the_key,myold_v)
                             try:
@@ -221,7 +225,6 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                     else:
                         garage.fail_backup(the_key)
                 rw_lock.after_write()
-                self.check_syn(proxy)
                 return self.str2file('{"success":"'+str(ret).lower()+'"}')
         return self.str2file('{"success":"false"}')
 

@@ -35,14 +35,20 @@ class TestMethods(unittest.TestCase):
         print(r.url)
         print(r.text)
     def func(self):
-        tmp = 'c'+threading.currentThread().getName()[7:]
-        payload = {'key': tmp, 'value' :tmp}
+        tmp = 'd'+threading.currentThread().getName()[7:]
+        payload = {'key': tmp, 'value' :tmp+'哈'}
         try:
-#            r = requests.post(self.url+self.path_insert, data=payload)
-#            if parse_output(r,'success') == 'false':
-#                with self.lock:
-#                    self.abn=self.abn+1
-            for i in range(1):
+            r = requests.post(self.url+self.path_insert, data=payload)
+            if parse_output(r,'success') == 'false':
+                with self.lock:
+                    self.abn=self.abn+1
+            for i in range(10):
+                payload = {'key': tmp}
+                r = requests.get(self.url+self.path_get, params=payload)
+                if parse_output(r,'success') == 'false':
+                    with self.lock:
+                        self.abn=self.abn+1
+            for i in range(0):
                 payload = {'key': tmp, 'value' :str(i+10)}
                 r = requests.post(self.url+self.path_update, data=payload)
                 if parse_output(r,'success') == 'false':
