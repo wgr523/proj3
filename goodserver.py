@@ -155,19 +155,12 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                 if ret:
                     proxy = self.connect_backup()
                     if proxy:
-                        #self.check_syn(proxy)
                         try:
                             proxy.insert_no_matter_what(the_key,the_value)
-                            self.check_syn(proxy)
                         except:
-                            garage.delete(the_key)
-                            try:
-                                proxy.delete(the_key)
-                            except:
-                                pass
-                            rw_lock.after_write()
+                            garage.fail_backup(the_key)
+                        finally:
                             self.check_syn(proxy)
-                            return self.str2file('{"success":"false", "info":"Backup connection error."}')
                     else:
                         garage.fail_backup(the_key)
                 rw_lock.after_write()
@@ -181,19 +174,12 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                 if ret[0]:
                     proxy = self.connect_backup()
                     if proxy:
-                        #self.check_syn(proxy)
                         try:
                             proxy.delete(the_key)
-                            self.check_syn(proxy)
                         except:
-                            garage.insert(the_key,ret[1])
-                            try:
-                                proxy.insert_no_matter_what(the_key,ret[1])
-                            except:
-                                pass
-                            rw_lock.after_write()
+                            garage.fail_backup(the_key)
+                        finally:
                             self.check_syn(proxy)
-                            return self.str2file('{"success":"false", "info":"Backup connection error."}')
                     else:
                         garage.fail_backup(the_key)
                 rw_lock.after_write()
@@ -209,19 +195,12 @@ class PrimaryHTTPRequestHandler(BaseHTTPRequestHandler):
                 if ret:
                     proxy = self.connect_backup()
                     if proxy:
-                        #self.check_syn(proxy)
                         try:
                             proxy.insert_no_matter_what(the_key,the_value)
-                            self.check_syn(proxy)
                         except:
-                            garage.update(the_key,myold_v)
-                            try:
-                                proxy.insert_no_matter_what(the_key,myold_v)
-                            except:
-                                pass
-                            rw_lock.after_write()
+                            garage.fail_backup(the_key)
+                        finally:
                             self.check_syn(proxy)
-                            return self.str2file('{"success":"false", "info":"Backup connection error."}')
                     else:
                         garage.fail_backup(the_key)
                 rw_lock.after_write()
